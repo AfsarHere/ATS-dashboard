@@ -1,37 +1,44 @@
+# app.py
 import streamlit as st
-import pandas as pd
-from PyPDF2 import PdfReader
-from docx import Document
+import re
 
-def extract_text(file):
-    if file.name.endswith(".pdf"):
-        reader = PdfReader(file)
-        return " ".join([page.extract_text() for page in reader.pages if page.extract_text()])
-    elif file.name.endswith(".docx"):
-        doc = Document(file)
-        return " ".join([p.text for p in doc.paragraphs])
-    elif file.name.endswith(".txt"):
-        return file.read().decode("utf-8")
-    return ""
+# Function to extract keywords (simple approach)
+def extract_keywords(text):
+    text = text.lower()
+    # split by common delimiters and remove short words
+    words = re.findall(r'\b\w{3,}\b', text)
+    return set(words)
 
-def calculate_score(jd_text, resume_text):
-    jd_words = set(jd_text.lower().split())
-    resume_words = set(resume_text.lower().split())
-    matched = jd_words.intersection(resume_words)
-    score = (len(matched) / len(jd_words)) * 100 if jd_words else 0
-    return round(score, 2), matched
+# Function to compute ATS score
+def ats_score(jd_text, resume_text):
+    jd_keywords = extract_keywords(jd_text)
+    resume_keywords = extract_keywords(resume_text)
 
-st.title("📊 ATS Score Checker")
+    matched = jd_keywords.intersection(resume_keywords)
+    missing = jd_keywords.difference(resume_keywords)
 
-jd_file = st.file_uploader("Upload Job Description (PDF/DOCX/TXT)", type=["pdf", "docx", "txt"])
-resume_file = st.file_uploader("Upload Resume (PDF/DOCX/TXT)", type=["pdf", "docx", "txt"])
+    score = len(matched) / len(jd_keywords) * 100
 
-if jd_file and resume_file:
-    jd_text = extract_text(jd_file)
-    resume_text = extract_text(resume_file)
+    return round(score, 1), matched, missing
 
-    score, matched_keywords = calculate_score(jd_text, resume_text)
+# Streamlit UI
+st.set_page_config(page_title="ATS Dashboard", layout="wide")
+st.title("🚀 ChatGPT-style ATS Dashboard")
 
-    st.subheader(f"✅ ATS Score: {score}%")
-    st.write("**Matched Keywords:**")
-    st.write(", ".join(matched_keywords))
+st.markdown("""
+This tool analyzes your **Resume** against a **Job Description (JD)** 
+and provides a score with keyword match insights.
+""")
+
+jd_text = st.text_area("Paste the Job Description (JD) here:", height=200)
+resume_text = st.text_area("Paste your Resume here:", height=300)
+
+if st.button("Analyze ATS Score"):
+    if not jd_text.strip() or not resume_text.strip():
+        st.warning("Please provide both JD and Resume text to analyze.")
+    else:
+        score, matched, missing = ats_score(jd_text, resume_text)
+        st.subheader(f"ATS Score: {score}%")
+        st.markdown(f"**Matched Keywords ({len(matched)}):** {', '.join(list(matched)[:20])} {'...' if len(matched) > 20 else ''}")
+        st.markdown(f"**Missing Keywords ({len(missing)}):** {', '.join(list(missing)[:20])} {'...' if len(missing) > 20 else ''}")
+        st.success("✅ Analysis complete!")
