@@ -3,12 +3,12 @@ import spacy
 from spacy.cli import download
 from collections import Counter
 
-# Download and load spaCy model
+# Download spaCy model at runtime
 download("en_core_web_sm")
 nlp = spacy.load("en_core_web_sm")
 
 st.title("ATS Resume Scorer")
-st.write("Paste your resume and job description below. The tool will calculate your ATS match score and provide suggestions.")
+st.write("Paste your resume and a job description below. The tool calculates ATS match score and gives suggestions.")
 
 resume_text = st.text_area("Resume Text:", height=250)
 job_text = st.text_area("Job Description Text:", height=250)
@@ -25,7 +25,7 @@ if st.button("Calculate ATS Score"):
         resume_keywords = [token.lemma_ for token in resume_doc if token.pos_ in ["NOUN", "PROPN", "VERB"]]
         job_keywords = [token.lemma_ for token in job_doc if token.pos_ in ["NOUN", "PROPN", "VERB"]]
         
-        # Count matches and missing
+        # Count matches
         resume_counter = Counter(resume_keywords)
         matches = [kw for kw in set(job_keywords) if kw in resume_counter]
         missing = [kw for kw in set(job_keywords) if kw not in resume_counter]
@@ -37,9 +37,9 @@ if st.button("Calculate ATS Score"):
         suggestions = []
         if ats_score < 50:
             suggestions.append("Your resume is missing many key skills. Add relevant keywords from the job description.")
-        if ats_score >= 50 and ats_score < 80:
-            suggestions.append("Your resume is moderately aligned. Consider emphasizing missing high-priority skills.")
-        if ats_score >= 80:
+        elif ats_score < 80:
+            suggestions.append("Your resume is moderately aligned. Emphasize missing high-priority skills.")
+        else:
             suggestions.append("Great alignment! Your resume matches most of the job keywords.")
         
         # Display results
